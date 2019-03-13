@@ -63,11 +63,13 @@ int main(int argc, char *argv[]){
 	freeaddrinfo(servinfo);
 	char buf[MAXDATASIZE];
 	int numbytes;
+	send(connect_socket, "e#PLAINTEXT%KEYTEXTKEYTEXT@", 28, 0);
+	
 	if ((numbytes = recv(connect_socket, buf, MAXDATASIZE-1,0)) == -1){
 		fprintf(stderr, "%s: recv error\n", __FILE__);
 		exit(1);
 	}
-
+	
 	buf[numbytes] = '\0';
 	printf("%s received: '%s'\n", __FILE__, buf);
 	close(connect_socket);

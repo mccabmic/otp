@@ -16,6 +16,7 @@
 #include <signal.h>
 
 #define PORT "515151"
+#define MAXDATASIZE 1000
 #define BACKLOG 5
 
 void sigchld_handler(int s){
@@ -97,6 +98,8 @@ int main(){
 	socklen_t sin_size;
 	char s[INET6_ADDRSTRLEN];
 	int task_sock;
+	char buf[MAXDATASIZE];
+	memset(buf, '\0', sizeof(buf));
 
 	while(1){
 		sin_size = sizeof(their_addr);
@@ -110,6 +113,10 @@ int main(){
 		printf("%s: got connection from %s\n", __FILE__,s);
 		if (!fork()){ // Child
 			close(listen_sock);
+			int chars_read = recv(task_sock, buf, sizeof(buf)- 1, 0);
+			buf[MAXDATASIZE] = '\0';
+			printf("%s received %s from client\n", __FILE__, buf);
+			
 			if (send(task_sock, "Hello world!", 13, 0) == -1){
 				fprintf(stderr, "%s: send error\n");
 			}
