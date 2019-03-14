@@ -1,2 +1,3 @@
 gcc -g otp_enc.c -o otp_enc
 gcc -g otp_enc_d.c -o otp_enc_d
+gcc -g keygen.c -o keygen -std=c99
