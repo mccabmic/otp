@@ -16,7 +16,7 @@
 #include <signal.h>
 
 #define PORT "515151"
-#define MAXDATASIZE 1000
+#define MAXDATASIZE 4096
 #define BACKLOG 5
 
 void sigchld_handler(int s){
@@ -92,15 +92,12 @@ int main(){
 		exit(1);
 	}
 	
-	printf("server waiting for conenctions...\n");
-	
 	struct sockaddr_storage their_addr;
 	socklen_t sin_size;
 	char s[INET6_ADDRSTRLEN];
 	int task_sock;
-	char buf[MAXDATASIZE];
-	memset(buf, '\0', sizeof(buf));
-
+	char buffer[MAXDATASIZE];
+	
 	while(1){
 		sin_size = sizeof(their_addr);
 		task_sock = accept(listen_sock, (struct sockaddr*) &their_addr, &sin_size);
@@ -110,16 +107,35 @@ int main(){
 		}
 		
 		inet_ntop(their_addr.ss_family, &their_addr, s, sizeof(s));
-		printf("%s: got connection from %s\n", __FILE__,s);
 		if (!fork()){ // Child
 			close(listen_sock);
-			int chars_read = recv(task_sock, buf, sizeof(buf)- 1, 0);
-			buf[MAXDATASIZE] = '\0';
-			printf("%s received %s from client\n", __FILE__, buf);
+			int chars_read;
+			char id[2];
 			
-			if (send(task_sock, "Hello world!", 13, 0) == -1){
-				fprintf(stderr, "%s: send error\n");
+			// If not authorized, close connection
+			recv(task_sock, id, 2, 0);
+			id[1] = '\0';
+			if( id[0] != 'e'){
+				close(task_sock);
+				exit(2);
 			}
+			else{
+				send(task_sock, "1", 1, 0);
+			}
+			
+			char size[5];
+			memset(size, '\0', sizeof(size));
+			recv(task_sock, size, sizeof(size) - 1, 0);
+
+			char* buf = malloc(sizeof(char) * atoi(size));
+			memset(buf, '\0', sizeof(char) * atoi(size));
+			while((chars_read = recv(task_sock, buffer, MAXDATASIZE - 1, 0)) > 0){
+				strcat(buf, buffer);
+				memset(buffer, '\0', strlen(buffer));
+			}
+			
+			strcat(buf, "\n");
+			printf("%s", buf);
 			close(task_sock);
 			exit(0);
 		}

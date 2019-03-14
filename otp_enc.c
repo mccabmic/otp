@@ -29,7 +29,6 @@ bool validate(char* filename){
 	return true;
 }
 
-
 char* read_file(char* filename){
 	if (access(filename, F_OK) == -1){
 		fprintf(stderr, "File does not exist: %s\n", filename);
@@ -54,6 +53,21 @@ char* read_file(char* filename){
 		free (file_contents);
 		return 0;
 	}
+}
+
+int sendall(int socket, char *buf, int *len){
+	int total = 0;
+	int bytesleft = *len;
+	int n;
+
+	while (total <* len){
+		n = send(socket, buf+total, bytesleft, 0);
+		if (n == -1){break;}
+		total += n;
+		bytesleft -= n;
+	}
+	*len = total;
+	return n==-1?-1:0;
 }
 
 int main(int argc, char *argv[]){
@@ -88,21 +102,11 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 		
-	free(plaintext);
-	free(key);
-
-	return 0;
-
-	// read contents of mykey and verify no bad chars
-	// compare length of plaintext to mykey and return if bad
-	
-
 	struct addrinfo hints, *servinfo, *traverse;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET; // change to AF_UNSPEC for IPv6 comp
 	hints.ai_socktype = SOCK_STREAM;
 	int rv;
-	
 
 	if ((rv = getaddrinfo("localhost", PORT, &hints, &servinfo)) != 0){
 		fprintf(stderr, "%s: getaddrinfo error: %s\n", __FILE__, gai_strerror(rv));
@@ -131,30 +135,34 @@ int main(int argc, char *argv[]){
 
 	if (traverse == NULL){
 		fprintf(stderr, "%s: could not connect\n", __FILE__);
+		free(plaintext);
+		free(key);
 		exit(2);
 	}
 
 	freeaddrinfo(servinfo);
-	char buf[MAXDATASIZE];
-	int numbytes;
 	
 	// verify identity to server
-	send(connect_socket, "e#PLAINTEXT%KEYTEXTKEYTEXT@", 28, 0);
-	
-	if ((numbytes = recv(connect_socket, buf, MAXDATASIZE-1,0)) == -1){
-		fprintf(stderr, "%s: recv error\n", __FILE__);
-		exit(2);
+	send(connect_socket, "e", 1, 0);
+	// receive confirmation from server
+	char auth = '\0';
+	recv(connect_socket, &auth, 1, 0);
+
+	// if not authorized, exit and print error
+	if (auth != '1'){
+		fprintf(stderr, "%s: server refused connection\n", __FILE__);
+		close(connect_socket);
+		free(plaintext);
+		free(key);
+		exit(2);	
+	}
+	// otherwise send the size of the data
+	else{
+		send(connect_socket, "70000", 4, 0);
 	}
 	
-	// receive confirmation from server
-	buf[numbytes] = '\0';
-	printf("%s received: '%s'\n", __FILE__, buf);
-	
-	// if verified, time to do work
-	
-	// otherwise, exit with error
-	
-	
+	int size = strlen(plaintext);
+	sendall(connect_socket, plaintext, &size);
 	close(connect_socket);
 	return 0;
 }
