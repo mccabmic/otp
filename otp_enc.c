@@ -1,7 +1,7 @@
 /*
  * client.c
  */
-#define __GNU_SOURCE
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,10 +11,24 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <ctype.h>
 
 #define MAXDATASIZE 1000
+
+bool validate(char* filename){
+	size_t str_len = strlen(filename);
+	int c;
+	for (c = 0; c < str_len; c++){
+		if (!isalpha(filename[c]) && !isspace(filename[c])){
+			return false;
+		}
+	}
+	return true;
+}
+
 
 char* read_file(char* filename){
 	if (access(filename, F_OK) == -1){
@@ -33,6 +47,7 @@ char* read_file(char* filename){
 	size_t numCharacters = getdelim(&file_contents, &buffer_size, '\0', fp);
 	fclose(fp);
 	if (numCharacters != -1){
+		file_contents[numCharacters-1]='\0';
 		return file_contents;
 	}
 	else {
@@ -45,18 +60,34 @@ int main(int argc, char *argv[]){
 	// verify arguments
 	if (argc != 4){
 		printf("%s: usage - %s plaintext key port\n", __FILE__, __FILE__);
-		exit(2);
+		exit(1);
 	}
 	
 	// set port
 	char* PORT = argv[3];
 	
 	// read contents of plaintext and verify no bad chars
-	
 	char* plaintext = read_file(argv[1]);
 	char* key = read_file(argv[2]);
 	
-	printf("plaintext l: %d key l: %d\n", strlen(plaintext), strlen(key));	
+	int pt_len, key_len;
+	pt_len = strlen(plaintext);
+	key_len = strlen(key);
+	if (pt_len != key_len){
+		fprintf(stderr, "%s: plaintext len != key len\n", __FILE__);
+		exit(1);
+	}
+	
+	if (!validate(plaintext)){
+		fprintf(stderr, "%s: input contains bad characters\n", __FILE__);
+		exit(1);
+	};
+
+	if (!validate(key)){
+		fprintf(stderr, "%s: input contains bad characters\n", __FILE__);
+		exit(1);
+	}
+		
 	free(plaintext);
 	free(key);
 
