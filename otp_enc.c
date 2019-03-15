@@ -158,11 +158,17 @@ int main(int argc, char *argv[]){
 	}
 	// otherwise send the size of the data
 	else{
-		send(connect_socket, "70000", 4, 0);
+		char filesize[10];
+		itoa(sizeof(plaintext), filesize, 10);
+		send(connect_socket, filesize, sizeof(filesize), 0);
 	}
 	
 	int size = strlen(plaintext);
 	sendall(connect_socket, plaintext, &size);
+	
+	free(plaintext);
+	free(key);
+	
 	close(connect_socket);
 	return 0;
 }
